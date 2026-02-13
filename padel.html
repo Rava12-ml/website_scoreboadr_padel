@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Padel De Soreang - Official Scoreboard</title>
+    <style>
+        :root {
+            --primary: #a42e2e; /* Merah Bata */
+            --bg-color: #f1c40f; /* Kuning */
+            --court-blue: #2980b9; /* Biru Lapangan */
+            --text-dark: #2c3e50;
+            --undo-color: #e67e22;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-dark);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* --- HEADER & RULES BTN --- */
+        .top-bar {
+            width: 100%;
+            max-width: 500px;
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 10px;
+        }
+        
+        .btn-rules {
+            background: rgba(255,255,255,0.3);
+            border: 2px solid white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: bold;
+            color: var(--text-dark);
+            text-transform: uppercase;
+            font-size: 0.8em;
+            transition: 0.3s;
+        }
+        .btn-rules:hover { background: white; }
+
+        /* --- LOGO --- */
+        .logo-container {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .logo-container img {
+            max-width: 250px;
+            height: auto;
+            border-radius: 10px;
+        }
+
+        /* --- SETUP SCREEN --- */
+        .setup-panel {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 500px;
+            text-align: center;
+        }
+
+        .input-group { margin-bottom: 15px; text-align: left; }
+        .input-group label { display: block; font-weight: bold; margin-bottom: 5px; color: var(--primary); }
+        .input-group input { width: 95%; padding: 10px; border: 2px solid #ddd; border-radius: 5px; font-size: 1rem; }
+
+        .btn-action {
+            background: var(--primary); color: white; border: none; padding: 12px 25px;
+            font-size: 1.1em; border-radius: 8px; cursor: pointer; width: 100%;
+            font-weight: bold; transition: transform 0.1s; margin-bottom: 10px;
+        }
+        .btn-action:active { transform: scale(0.98); }
+
+        .btn-undo {
+            background: var(--undo-color); color: white; border: none; padding: 12px;
+            font-size: 1.1em; border-radius: 8px; cursor: pointer; width: 100%;
+            font-weight: bold; display: flex; align-items: center; justify-content: center;
+            gap: 10px; box-shadow: 0 4px 0 #d35400;
+        }
+        .btn-undo:active { transform: translateY(4px); box-shadow: none; }
+
+        /* --- MODALS --- */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            display: none;
+            justify-content: center; align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: white; padding: 30px; border-radius: 15px;
+            text-align: center; max-width: 500px; width: 90%;
+            animation: popIn 0.3s ease-out;
+            max-height: 80vh; overflow-y: auto; position: relative;
+        }
+        @keyframes popIn { from {transform: scale(0.8); opacity: 0;} to {transform: scale(1); opacity: 1;} }
+
+        .rules-text { text-align: left; line-height: 1.6; font-size: 0.9em; }
+        .rules-text h3 { color: var(--primary); border-bottom: 2px solid #eee; padding-bottom: 5px; margin-top: 15px; }
+        .rules-text ul { padding-left: 20px; }
+        .close-btn { position: absolute; top: 10px; right: 15px; font-size: 24px; cursor: pointer; color: #999; }
+
+        .coin {
+            width: 100px; height: 100px; background: gold; border-radius: 50%;
+            margin: 20px auto; display: flex; align-items: center; justify-content: center;
+            font-size: 40px; border: 5px solid orange; font-weight: bold; color: #d35400;
+        }
+        .animate-coin { animation: flip 2s infinite linear; }
+        @keyframes flip { 0% {transform: rotateY(0);} 100% {transform: rotateY(360deg);} }
+
+        /* Winner & Tiebreak */
+        .final-score-box {
+            background: #f8f9fa; border: 2px solid var(--primary);
+            padding: 15px; margin: 20px 0; border-radius: 10px;
+        }
+        .fs-team { font-size: 1.1em; color: #555; margin: 5px 0; }
+        .fs-number { font-size: 2.5em; font-weight: bold; color: var(--text-dark); display: flex; align-items: flex-start; justify-content: center;}
+        .tiebreak-score { font-size: 0.4em; color: #d35400; margin-left: 5px; margin-top: 5px; }
+
+        /* --- GAME UI --- */
+        .game-ui { display: none; width: 100%; max-width: 700px; flex-direction: column; align-items: center; }
+
+        .scoreboard {
+            background: white; width: 100%; border-radius: 15px;
+            padding: 15px; margin-bottom: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .score-row {
+            display: grid; grid-template-columns: 2fr 1fr 1fr;
+            align-items: center; border-bottom: 1px solid #eee; padding: 10px 0;
+        }
+        .score-row:last-child { border-bottom: none; }
+        
+        .team-names { font-size: 1.1em; font-weight: bold; }
+        .team-names span { display: block; font-size: 0.8em; color: #7f8c8d; font-weight: normal;}
+        
+        .score-val { font-size: 2em; font-weight: bold; text-align: center; }
+        .score-games { color: var(--text-dark); }
+        .score-points { color: var(--primary); }
+
+        .info-bar { text-align: center; font-weight: bold; color: var(--primary); margin-bottom: 5px; font-size: 0.9em; }
+
+        /* --- COURT --- */
+        .court-wrapper { width: 100%; position: relative; margin-bottom: 20px; }
+        .court {
+            width: 100%; padding-top: 50%; background-color: var(--court-blue);
+            position: relative; border: 4px solid white; box-sizing: border-box;
+        }
+        .line { position: absolute; background: white; }
+        .net {
+            top: 0; bottom: 0; left: 50%; width: 4px; background: #ecf0f1; 
+            transform: translateX(-50%); z-index: 2; border-left: 1px dashed #bdc3c7;
+        }
+        .service-line-left { top: 0; bottom: 0; left: 35%; width: 2px; }
+        .service-line-right { top: 0; bottom: 0; right: 35%; width: 2px; }
+        .center-line-left { top: 50%; left: 35%; right: 50%; height: 2px; }
+        .center-line-right { top: 50%; left: 50%; right: 35%; height: 2px; }
+
+        .player-token {
+            position: absolute; width: 30px; height: 30px; background: var(--text-dark);
+            color: white; border-radius: 50%; border: 2px solid white;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 14px; font-weight: bold; z-index: 10;
+            transform: translate(-50%, -50%); transition: all 0.5s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+        }
+        .player-token.team2 { background: var(--primary); }
+        .ball-indicator {
+            position: absolute; width: 15px; height: 15px; background: #eaff00; 
+            border-radius: 50%; z-index: 11; box-shadow: 0 0 5px black; transition: all 0.5s ease;
+        }
+
+        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; width: 100%; margin-bottom: 15px; }
+        .btn-point { padding: 15px; font-size: 1.2em; border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer; }
+        .btn-t1 { background: var(--text-dark); }
+        .btn-t2 { background: var(--primary); }
+        .control-row-secondary { display: flex; gap: 15px; width: 100%; }
+
+    </style>
+</head>
+<body>
+
+    <div class="top-bar">
+        <button class="btn-rules" onclick="toggleRules(true)">📜 Peraturan</button>
+    </div>
+
+    <div class="logo-container">
+        <img src="logo.png" alt="Padel De Soreang Logo">
+    </div>
+
+    <div class="setup-panel" id="setupPanel">
+        <h2>REGISTRASI TIM</h2>
+        
+        <div class="input-group">
+            <label>TEAM 1 (Dark Jersey)</label>
+            <input type="text" id="p1Name" placeholder="Nama Pemain A" value="Raka">
+            <input type="text" id="p2Name" placeholder="Nama Pemain B" value="Budi" style="margin-top:5px;">
+        </div>
+
+        <div class="input-group">
+            <label>TEAM 2 (Red Jersey)</label>
+            <input type="text" id="p3Name" placeholder="Nama Pemain C" value="Citra">
+            <input type="text" id="p4Name" placeholder="Nama Pemain D" value="Doni" style="margin-top:5px;">
+        </div>
+
+        <div class="input-group">
+            <label>Format Pertandingan</label>
+            <select id="matchFormat" style="width:100%; padding:10px;">
+                <option value="group">Babak Group (First to 4)</option>
+                <option value="final">Semi/Final (First to 6)</option>
+            </select>
+        </div>
+
+        <button class="btn-action" onclick="startCoinToss()">LANJUT KE COIN TOSS 🪙</button>
+    </div>
+
+    <div class="modal-overlay" id="coinModal">
+        <div class="modal-content">
+            <h2 id="coinTitle">LEMPAR KOIN</h2>
+            <div class="coin" id="coinIcon">?</div>
+            <p id="coinResultText">Mengundi...</p>
+            <div id="coinOptions" style="display:none;">
+                <p>Pemenang memilih:</p>
+                <button class="btn-action" onclick="finalizeSetup('serve')" style="margin-bottom:10px;">AMBIL BOLA (SERVE)</button>
+                <button class="btn-action" onclick="finalizeSetup('receive')" style="background:#555;">PILIH TEMPAT (RECEIVE)</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="rulesModal">
+        <div class="modal-content" style="text-align: left;">
+            <span class="close-btn" onclick="toggleRules(false)">&times;</span>
+            <h2 style="text-align:center; color:var(--primary);">PERATURAN PERTANDINGAN</h2>
+            <div class="rules-text">
+                <h3>Format Pertandingan</h3>
+                <ul>
+                    <li><strong>Grup Babak:</strong> First to 4 games. Tiebreak (sampai 5) pada 3-3.</li>
+                    <li><strong>Semi & Final:</strong> First to 6 games. Tiebreak (sampai 7) pada 5-5.</li>
+                    <li><strong>Skor Tanpa Iklan (No-Ad):</strong> Saat 40-40, Permainan Golden Point.</li>
+                </ul>
+                <h3>Peraturan & Kewajiban</h3>
+                <ul>
+                    <li>Substitusi mitra maksimal 9 Februari 2026.</li>
+                    <li>Peserta wajib membawa KTP untuk verifikasi.</li>
+                    <li>Keputusan ada di tangan pemain. Jika berbeda pendapat, lakukan Let.</li>
+                </ul>
+            </div>
+            <br>
+            <button class="btn-action" onclick="toggleRules(false)">TUTUP</button>
+        </div>
+    </div>
+
+    <div class="game-ui" id="gameUI">
+        <div class="scoreboard">
+            <div class="info-bar" id="gameStatus">SET 1 - PLAY 1</div>
+            <div class="info-bar" id="goldenPoint" style="display:none; color:red;">★ GOLDEN POINT ★</div>
+            
+            <div class="score-row header">
+                <div>Team</div>
+                <div style="text-align:center">Games</div>
+                <div style="text-align:center">Points</div>
+            </div>
+
+            <div class="score-row">
+                <div class="team-names">TEAM 1 <span id="dispT1Names">R & B</span></div>
+                <div class="score-val score-games" id="scoreGames1">0</div>
+                <div class="score-val score-points" id="scorePoints1">0</div>
+            </div>
+
+            <div class="score-row">
+                <div class="team-names">TEAM 2 <span id="dispT2Names">C & D</span></div>
+                <div class="score-val score-games" id="scoreGames2">0</div>
+                <div class="score-val score-points" id="scorePoints2">0</div>
+            </div>
+        </div>
+
+        <div class="court-wrapper">
+            <div class="court">
+                <div class="net"></div>
+                <div class="line service-line-left"></div> <div class="line service-line-right"></div>
+                <div class="line center-line-left"></div> <div class="line center-line-right"></div>
+                
+                <div class="player-token" id="tokenP1">A</div> <div class="player-token" id="tokenP2">B</div>
+                <div class="player-token team2" id="tokenP3">C</div> <div class="player-token team2" id="tokenP4">D</div>
+                <div class="ball-indicator" id="ballToken"></div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn-point btn-t1" onclick="addPoint(0)">POINT TEAM 1</button>
+            <button class="btn-point btn-t2" onclick="addPoint(1)">POINT TEAM 2</button>
+        </div>
+        
+        <div class="control-row-secondary">
+            <button class="btn-undo" onclick="undoLastPoint()"><span>↩</span> UNDO POINT</button>
+            <button class="btn-action" onclick="if(confirm('Reset permainan?')) location.reload()" style="background:#7f8c8d; margin:0;">RESET ALL</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="winnerOverlay">
+        <div class="modal-content">
+            <h1 style="color:var(--primary); font-size:3em; margin-bottom:0;">🏆</h1>
+            <h2 id="winnerText">TEAM WINS!</h2>
+            
+            <div class="final-score-box">
+                <div class="fs-team">SKOR AKHIR</div>
+                <hr style="border:0; border-top:1px solid #ddd; margin:10px 0;">
+                <div style="display:flex; justify-content:space-around; align-items:center;">
+                    <div style="text-align: center;">
+                        <div class="fs-team">TEAM 1</div>
+                        <div class="fs-number" id="finalScore1">0</div>
+                    </div>
+                    <div style="font-weight:bold; color:#aaa; font-size: 2em;">-</div>
+                    <div style="text-align: center;">
+                        <div class="fs-team">TEAM 2</div>
+                        <div class="fs-number" id="finalScore2">0</div>
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn-action" onclick="location.reload()">MAIN LAGI 🔄</button>
+        </div>
+    </div>
+
+    <script>
+        // --- DATA STATE ---
+        let matchData = {
+            t1Names: [], t2Names: [], mode: 'group',
+            points: [0, 0], games: [0, 0], isTiebreak: false,
+            serverTeam: 0, 
+            servingSequence: [], // Menyimpan urutan service [indexP1, indexP3, indexP2, indexP4]
+            servingSide: 'right', 
+            gameStartServerTeam: 0 
+        };
+        let historyStack = [];
+        const POINT_LABELS = ["0", "15", "30", "40"];
+        
+        // --- FUNCTIONS ---
+        
+        function toggleRules(show) {
+            document.getElementById('rulesModal').style.display = show ? 'flex' : 'none';
+        }
+
+        function startCoinToss() {
+            const p1 = document.getElementById('p1Name').value || 'A';
+            const p2 = document.getElementById('p2Name').value || 'B';
+            const p3 = document.getElementById('p3Name').value || 'C';
+            const p4 = document.getElementById('p4Name').value || 'D';
+
+            matchData.t1Names = [p1, p2];
+            matchData.t2Names = [p3, p4];
+            matchData.mode = document.getElementById('matchFormat').value;
+
+            document.getElementById('tokenP1').innerText = p1.charAt(0).toUpperCase();
+            document.getElementById('tokenP2').innerText = p2.charAt(0).toUpperCase();
+            document.getElementById('tokenP3').innerText = p3.charAt(0).toUpperCase();
+            document.getElementById('tokenP4').innerText = p4.charAt(0).toUpperCase();
+
+            document.getElementById('dispT1Names').innerText = matchData.t1Names.join(" & ");
+            document.getElementById('dispT2Names').innerText = matchData.t2Names.join(" & ");
+
+            document.getElementById('setupPanel').style.display = 'none';
+            document.getElementById('coinModal').style.display = 'flex';
+            
+            const coin = document.getElementById('coinIcon');
+            coin.classList.add('animate-coin');
+            
+            setTimeout(() => {
+                coin.classList.remove('animate-coin');
+                const winner = Math.random() < 0.5 ? 1 : 2; 
+                matchData.coinWinner = winner;
+                coin.innerText = winner === 1 ? "1" : "2";
+                coin.style.background = winner === 1 ? "#2c3e50" : "#a42e2e";
+                coin.style.color = "white";
+                document.getElementById('coinResultText').innerHTML = `<strong>${winner === 1 ? "TEAM 1" : "TEAM 2"}</strong> MENANG TOSS!`;
+                document.getElementById('coinOptions').style.display = 'block';
+            }, 2000);
+        }
+
+        function finalizeSetup(choice) {
+            let startingTeam = 0; 
+            if (choice === 'serve') {
+                startingTeam = (matchData.coinWinner === 1) ? 0 : 1;
+            } else {
+                startingTeam = (matchData.coinWinner === 1) ? 1 : 0;
+            }
+
+            // Urutan Rotasi: T1.P1 -> T2.P1 -> T1.P2 -> T2.P2
+            if (startingTeam === 0) {
+                matchData.servingSequence = [0, 2, 1, 3];
+            } else {
+                matchData.servingSequence = [2, 0, 3, 1];
+            }
+
+            document.getElementById('coinModal').style.display = 'none';
+            document.getElementById('gameUI').style.display = 'flex';
+            updateDisplay();
+        }
+
+        function saveState() {
+            historyStack.push(JSON.parse(JSON.stringify(matchData)));
+        }
+
+        function undoLastPoint() {
+            if (historyStack.length === 0) { alert("Tidak ada riwayat untuk di-undo!"); return; }
+            matchData = historyStack.pop();
+            document.getElementById('winnerOverlay').style.display = 'none';
+            updateDisplay();
+        }
+
+        function addPoint(winningTeamIdx) {
+            const targetGames = matchData.mode === 'group' ? 4 : 6;
+            if (matchData.games[0] === targetGames || matchData.games[1] === targetGames) return;
+
+            saveState();
+            const losingTeamIdx = winningTeamIdx === 0 ? 1 : 0;
+            const tiebreakMax = matchData.mode === 'group' ? 5 : 7;
+
+            if (matchData.isTiebreak) {
+                matchData.points[winningTeamIdx]++;
+                // Cek Menang Tiebreak
+                if (matchData.points[winningTeamIdx] >= tiebreakMax) { 
+                    winSet(winningTeamIdx); 
+                    return; 
+                }
+            } else {
+                if (matchData.points[winningTeamIdx] === 3 && matchData.points[losingTeamIdx] === 3) { winGame(winningTeamIdx); return; }
+                if (matchData.points[winningTeamIdx] === 3) { winGame(winningTeamIdx); return; }
+                matchData.points[winningTeamIdx]++;
+            }
+            updateDisplay();
+        }
+
+        function winGame(teamIdx) {
+            matchData.games[teamIdx]++;
+            matchData.points = [0, 0];
+            const targetGames = matchData.mode === 'group' ? 4 : 6;
+            const tiebreakTrigger = matchData.mode === 'group' ? 3 : 5;
+
+            if (matchData.games[teamIdx] === targetGames) { winSet(teamIdx); return; }
+            if (matchData.games[0] === tiebreakTrigger && matchData.games[1] === tiebreakTrigger) {
+                matchData.isTiebreak = true;
+                alert("TIE BREAK DIMULAI!");
+            }
+            updateDisplay();
+        }
+
+        function winSet(teamIdx) {
+            updateDisplay();
+            document.getElementById('winnerText').innerText = (teamIdx === 0 ? "TEAM 1" : "TEAM 2") + " WINS!";
+            
+            let finalS1 = matchData.games[0];
+            let finalS2 = matchData.games[1];
+            
+            // Tampilkan skor tiebreak kecil
+            if (matchData.isTiebreak) {
+                let tb1 = matchData.points[0];
+                let tb2 = matchData.points[1];
+                finalS1 += `<span class="tiebreak-score">(${tb1})</span>`;
+                finalS2 += `<span class="tiebreak-score">(${tb2})</span>`;
+            }
+            
+            document.getElementById('finalScore1').innerHTML = finalS1;
+            document.getElementById('finalScore2').innerHTML = finalS2;
+            document.getElementById('winnerOverlay').style.display = 'flex';
+        }
+
+        function updateDisplay() {
+            document.getElementById('scoreGames1').innerText = matchData.games[0];
+            document.getElementById('scoreGames2').innerText = matchData.games[1];
+
+            if (matchData.isTiebreak) {
+                document.getElementById('scorePoints1').innerText = matchData.points[0];
+                document.getElementById('scorePoints2').innerText = matchData.points[1];
+                document.getElementById('gameStatus').innerText = "TIE BREAK";
+                document.getElementById('goldenPoint').style.display = 'none';
+            } else {
+                document.getElementById('scorePoints1').innerText = POINT_LABELS[matchData.points[0]];
+                document.getElementById('scorePoints2').innerText = POINT_LABELS[matchData.points[1]];
+                document.getElementById('goldenPoint').style.display = (matchData.points[0] === 3 && matchData.points[1] === 3) ? 'block' : 'none';
+                
+                let currentGameNumber = matchData.games[0] + matchData.games[1] + 1;
+                document.getElementById('gameStatus').innerText = "SET 1 - PLAY " + currentGameNumber;
+            }
+
+            const totalPoints = matchData.points[0] + matchData.points[1];
+            matchData.servingSide = (totalPoints % 2 === 0) ? 'right' : 'left';
+            updatePlayerPositions();
+        }
+
+        function updatePlayerPositions() {
+            const pos = {
+                t1_deuce: { left: '10%', top: '75%' }, t1_ad: { left: '10%', top: '25%' }, 
+                t1_net_R: { left: '40%', top: '75%' }, t1_net_L: { left: '40%', top: '25%' },
+                t2_deuce: { left: '90%', top: '25%' }, t2_ad: { left: '90%', top: '75%' }, 
+                t2_net_R: { left: '60%', top: '25%' }, t2_net_L: { left: '60%', top: '75%' }
+            };
+
+            const p1=document.getElementById('tokenP1'), p2=document.getElementById('tokenP2');
+            const p3=document.getElementById('tokenP3'), p4=document.getElementById('tokenP4');
+            const ball=document.getElementById('ballToken');
+
+            let serverElem;
+            let currentServerIdx;
+
+            // --- LOGIKA ROTASI SERVER ---
+            if (!matchData.isTiebreak) {
+                // GAME NORMAL: Rotasi A -> C -> B -> D setiap ganti game
+                let gamesPlayed = matchData.games[0] + matchData.games[1];
+                let sequenceIndex = gamesPlayed % 4;
+                currentServerIdx = matchData.servingSequence[sequenceIndex];
+            } else {
+                // TIEBREAK MODE: Logika 1-2-2-2 dan Kembali ke Pemain Awal Set
+                // 1. Cari tahu siapa yang seharusnya service game ini (Game ke-13)
+                //    Ini adalah server pertama di tiebreak (Poin ke-0)
+                let baseGamesPlayed = matchData.games[0] + matchData.games[1];
+                let baseSequenceIndex = baseGamesPlayed % 4;
+                
+                // 2. Hitung offset rotasi tiebreak (0, 1, 1, 2, 2, 3, 3...)
+                //    Rumus: floor((totalPoints + 1) / 2)
+                let totalPoints = matchData.points[0] + matchData.points[1];
+                let tiebreakOffset = Math.floor((totalPoints + 1) / 2);
+                
+                // 3. Gabungkan untuk dapat index server saat ini
+                let finalSequenceIndex = (baseSequenceIndex + tiebreakOffset) % 4;
+                currentServerIdx = matchData.servingSequence[finalSequenceIndex];
+            }
+
+            // Set Tim Server berdasarkan Index Pemain
+            // 0 & 1 = Tim 1, 2 & 3 = Tim 2
+            matchData.serverTeam = (currentServerIdx <= 1) ? 0 : 1;
+
+            // Tentukan elemen DOM server
+            if (currentServerIdx === 0) serverElem = p1;
+            else if (currentServerIdx === 1) serverElem = p2;
+            else if (currentServerIdx === 2) serverElem = p3;
+            else if (currentServerIdx === 3) serverElem = p4;
+
+            // Update Posisi Lapangan
+            if (matchData.serverTeam === 0) {
+                // Tim 1 Service
+                const isDeuce = matchData.servingSide === 'right';
+                setPos(serverElem, isDeuce ? pos.t1_deuce : pos.t1_ad);
+                
+                let partnerElem = (currentServerIdx === 0) ? p2 : p1;
+                setPos(partnerElem, isDeuce ? pos.t1_net_L : pos.t1_net_R);
+
+                setPos(p3, isDeuce ? pos.t2_deuce : pos.t2_ad); 
+                setPos(p4, isDeuce ? pos.t2_net_L : pos.t2_net_R); 
+                
+            } else {
+                // Tim 2 Service
+                const isDeuce = matchData.servingSide === 'right';
+                setPos(serverElem, isDeuce ? pos.t2_deuce : pos.t2_ad);
+                
+                let partnerElem = (currentServerIdx === 2) ? p4 : p3;
+                setPos(partnerElem, isDeuce ? pos.t2_net_L : pos.t2_net_R);
+
+                setPos(p1, isDeuce ? pos.t1_deuce : pos.t1_ad);
+                setPos(p2, isDeuce ? pos.t1_net_L : pos.t1_net_R);
+            }
+
+            ball.style.top = serverElem.style.top; ball.style.left = serverElem.style.left;
+            let leftVal = parseFloat(serverElem.style.left);
+            ball.style.left = (matchData.serverTeam === 0 ? (leftVal + 5) : (leftVal - 5)) + '%';
+        }
+
+        function setPos(elem, coords) { elem.style.left = coords.left; elem.style.top = coords.top; }
+    </script>
+</body>
+</html>
